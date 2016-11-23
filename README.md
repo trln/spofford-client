@@ -5,12 +5,15 @@ A command line utility and library for interacting with a Spofford server instan
 ## Installation
 
 Command line usage, assuming a working Ruby installation:
+    
+    $ git clone https://github.com/trln/spofford-client
+    $ cd spofford-client
+    $ bundle exec rake install 
 
-`gem install spofford-client`
+Which will place the `spofford-client` script on your PATH (does this work on Windows? You can always install this on
+a Linux VM, and use directory sharing to process files on the host OS.)
 
-Which will place the `spofford-client` script on your PATH (does this work on Windows?)
-
-To use as a library, place the following in your `Gemfile`: 
+To use as a library, place the following in your application's `Gemfile`: 
 
 ```ruby
 gem 'spofford-client'

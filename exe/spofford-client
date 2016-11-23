@@ -149,7 +149,7 @@ end
 packager = Spofford::Client::Packager.new(ARGV, options)
 package = packager.get_package
 
-return "Package created at #{package}" if verbose
+puts "Package created at #{package}" if verbose
 if options[:package_only]
   exit
 end
