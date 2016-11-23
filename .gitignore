@@ -1,0 +1,20 @@
+# default dir for created ingest packages
+/packages/
+
+# configs probably shouldn't be committed!
+config.yml
+
+# IDE/editor files
+/.idea/
+
+# Created by 'bundle gem'
+/.bundle/
+/.yardoc
+/Gemfile.lock
+/_yardoc/
+/coverage/
+/doc/
+/pkg/
+/spec/reports/
+/tmp/
+
