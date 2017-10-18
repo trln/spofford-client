@@ -45,31 +45,37 @@ Note that each account may only have one authentication token associated with it
 
 ## Commands
 
+This section documents intent; if in doubt,
+
+    $ spofford help commands
+
+may contain different information; if so, that output should be considered definitive!
+
 ### `ingest`
 
 The ingest command has the form
 
     $ spofford ingest [options] [files]
 
-If one filename is specified and has the `.zip` extension, it will be assumed to be a complete ingest package; if multiple filenames are specified, or the first one does not have a `.zip` extension, then they will be assumed to specify the constituents of an ingest package.
+* If one filename is specified and has the `.zip` extension, it will be assumed to be a complete ingest package (see below).
+* if multiple filenames are specified, or the first one does not have a `.zip` extension, then they will be assumed to specify the constituents of an ingest package.
+* the `--json` option tells the client that only the first file matters, and it will be interpreted as an Argot JSON file with added/updated documents.
 
-When used in the second form, the command will create a timestamped `zip` file in the configured output directory containing the files named on the command line.  *_Spofford will try to guess each file's contents based on its name and extension_*.  See the `package` command for the details.
+When used in the second form, the command will, in the default configuration, create a timestamped `zip` file in the configuration's `:output` directory.  Since we are not (currently) using manifests, the interpretation of each file depends on its filename (and extension).
 
-#### Ingest options
-|Option| Long Form | Meaning | Default
-|`-c`| `--config=FILE` | path to configuration file to be used | `.spofford-client.yml`
-| | `--json` | Don't create a package, submit the first file as an add/update Argot file| off
-|`-v`| `--verbose` | Be fairly chatty about what's happening while performing the ingest | off; you might want to specify this switch if you're experiencing problems
-| | `--debug` | Be extremely chatty about HTTP operations| off; use to help figure out what's going on if `-v` isn't telling you enough
-| \* `-a` | `--account=YOU@SOMEWHERE@EDU` | Override account name to use | empty; may be useful for testing?
-| \* `-u` | `--base_url=URL` | Override base URL | empty; maybe useful for testing?
+See the `package` command for the details.
+
+#### Ingest Options
+|Option| Long Form | Meaning | Default / Notes |
+|------|-----------|---------|-----------------|
+|`-c`| `--config=FILE` | path to configuration file to be used | `.spofford-client.yml` |
+| | `--json` | Don't create a package, submit the first file as an add/update Argot file| off |
+|`-v`| `--verbose` | Be fairly chatty about what's happening while performing  |the ingest | off; you might want to specify this switch if you're experiencing problems |
+| | `--debug` | Be extremely chatty about HTTP operations| off; use to help figure out what's going on if `-v` isn't telling you enough |
+| \* `-a` | `--account=YOU@SOMEWHERE@EDU` | Override account name to use | empty; may be useful for testing? |
+| \* `-u` | `--base_url=URL` | Override base URL | empty; maybe useful for testing? |
 
 Options marked with a `\*` are experimental and may be removed.
-
-    $ spofford help commands
-
-May contain different information; if so, that output is definitive!
-
 
 ### `package`
 
@@ -77,7 +83,17 @@ Allows creation of an ingest package from one or more files.
 
     $ spofford package [options] file1 [file2, [file3 ..]]
 
-The `ingest` command uses the same packager under the hood, so the primary reason to use this command is for debugging, or you like to do things manually.  
+The `ingest` command uses the same packager under the hood, so the primary reason to use this command is for debugging, or you like to do things manually.
+
+#### Package Options
+
+| Option | Full | Meaning | Default / Notes |
+|--------|------|---------|------------------|
+|`-c`| `--config=FILE` | path to configuration file to be used | `.spofford-client.yml` |
+|`-o`| `--output=FILE_OR_DIRECTORY` | Where to send output | value of the `:output` parameter in the active configuration.  If it is a filename ending in .zip, the file will be created or overwritten.  Otherwise, if it either is a directory (even one that doesn't exist yet), will be interpreted as a directory where `spofford-ingest-[timestamp].zip` will go.  If both of those fail, defaults to `spofford-ingest.zip` in the working directory. |
+|`-v`| `--verbose` | Be fairly chatty about what's happening while performing the packaging | off; you might want to specify this switch if you're experiencing problems |
+|-t | `--test` | Test package creation, but do not create output file; implies `--verbose` | off |
+
 #### Ingest Package Format
 
 An ingest package is a `.zip` file, containing:
@@ -85,55 +101,45 @@ An ingest package is a `.zip` file, containing:
   * zero or more files with the pattern `delete*.json`: these files are assumed to contain a JSON array containing the Unique IDs of records to be removed from the shared index.
   * zero or more Argot (JSON) files with the pattern `add*.json` containing records to be updated.
 
-Empty `.zip`s will not be submitted.
+These are the only two filename formats Spofford (the server) understands and will process; you can insert other files into the ingest package, and they will be stored (at least temporarily), but will not otherwise be intepreted by Spofford.
 
-The `package` command 
+In order to make it easier to create valid ingest packages, the packager provides some assistance in converting filenames supplied on the command line:
 
-Outputs a `.zip` file, which by default is `spofford-ingest.zip` in the current working directory.
-Files matching the pattern `delete*.json` will be ingested as-is, and will be assumed to contain JSON arrays of unique identifiers to be deleted (removed from the index).
+Files matching the pattern `delete*.json` and `add*.json` are ingested as-is, and assumed to be in the proper format.
 
-Files matching the pattern `delete*.txt` (or any other extension that is not JSON) will be assumed to contain one unique identifier per line of a document to be removed from the index.  These will be automatically converted to a JSON array form file (which is the only one Spofford natively understands) before being included in the ingest package.
+Files starting with `delete` and having some other extension will be processed by the packager into JSON arrays, and stored in the ingest package with a `.json` extension after being converted to JSON arrays of document IDs using the following logic:
 
-All other files matching the pattern `add*.json` extension will be assumed to contain Argot JSON for records that are to be added or updated in the index.  This is the filename pattern Spofford looks for to process additions/updates.
+Extension `.csv` -- file is interpreted as a CSV, where each line contains comma-separated identifers of documents to be removed from the index.
 
-Note that, for purposes of matching and inclusion within the ingest package, filenames will be stripped of their paths and converted to lower case first.  That is, if you submit a file named `/path/to/argot/files/Add-UNC-2017-10-23.json`, it will show up in the ingest package as
-'add-unc-2017-10-23.json'.
+ALl other extensions -- assumed to contain one unique identifier per line of a document to be removed from the index.
 
-Filenames within an ingest package should be unique, or you'll get weird results.
+Finally, any file with `argot` in the name somwhere that also has a `.json`
+extension will have `add-` prepended to their name before they are stored in the zip.
 
-It is possible to store other files in an ingest package; this is to support possible future expansion (e.g manifests, special processing directives, etc.), but for now this facility serves at best to allow you to supply notes to yourself.
+Note all these comparisons etc. are done against a filename stripped of path, and which have been converted to lower case.
 
-When using the second form, the filenames can be specified in any order.
+### Ingest Package Examples
 
-The packaging process will only include files that exist, and if the resulting
-`.zip` would be empty, the ingest process will fail.
+    $ spofford package foo.json /home/user/marc-to-argot/argot-7.json /ils/updates/delete
+
+Contents (assuming all named files exist):
+```
+foo.json # ignored by spofford
+add-argot-7.json # add/update file
+delete.json # JSON array of the lines in /ils/updates/delete
+```
 
 
-Thus, the only way to delete (de-index) a record is to use the `.zip` form.
+### A Note on Validation
 
-The `ingest` package allows the creation of zip packages on the fly, and you can experiment with package creation using the `package` command.  There is also a `verify` command that will check the contents of a named .zip file to determine whether it is in the right form to be submitted to spofford.
+The packager is doing quite a few things, and may in the future add more quality checks, but for now it will let you do all sorts of things you may not actually want to do.  
 
-
-#### `package` options
-
-|Option| Long Form | Meaning | Default
-|`-o`|`--output=DIRECTORY_OR_ZIP_FILE`| where to send the output; assumed to name a directory unless it ends in `.zip` | `./spofford-ingest.zip`
-|`-t`|`--test`|Do not create the output file, just outline what would be done | off
+You probably want to validate your Argot before you try to ingest or package it, using the tools provided by the `argot` gem.
 
 ### `authenticate`
 
 Obtains a new authentication token from Spofford and writes it to the configuration file.  This must be used interactively, as you need to log in
 with your account's password in order to generate the new token.
-
-### Multiple Configurations
-
-If you are responsible for multiple ingest profiles (e.g. one for your general collection and others for shared collections, etc.), you can follow one of two strategies:
-
-* per-directory profile: each ingest profile has its own directory and configuration file.
-* multiple profiles in the same directory: every command that uses a profile ((including `configure`) supports the `-c` parameter, that points to the configuration file to be used.
-
-The former is reccomended, but the latter is supported to allow you to store all of your various configurations in a single (PRIVATE, please!  profiles can contain account information) source code repository.
-
    
 ## Development
 
