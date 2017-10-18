@@ -1,0 +1,5 @@
+#!/usr/bin/env ruby
+
+require 'spofford/client'
+
+Spofford::Client::CommandLine.start
