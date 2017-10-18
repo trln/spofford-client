@@ -1,7 +1,10 @@
 # default dir for created ingest packages
 /packages/
 
+*.gem
+
 # configs probably shouldn't be committed!
+.spofford-client.yml
 config.yml
 
 # IDE/editor files
