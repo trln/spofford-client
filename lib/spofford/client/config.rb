@@ -10,7 +10,7 @@ module Spofford
       def self.guess_owner
         hostname = Socket.gethostname
         m = /\.([a-z]+)\.edu$/.match(hostname.downcase)
-        m ? m[1] : '<unknown>'
+        m ? m[1] : 'unknown'
       end
 
       # Guess the Spofford account name based on current user
