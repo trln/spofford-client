@@ -46,7 +46,7 @@ describe 'Spofford::Client::Packager' do
 
     it 'creates a package with two delete JSON files' do
       result = nil
-      output = Capture.capture do 
+      output = Capture.capture do
         result = @instance.package
       end
       expect(File.exist?(result)).to be(true)
@@ -62,7 +62,7 @@ describe 'Spofford::Client::Packager' do
       end
     end
 
-    after(:each) do 
+    after(:each) do
       File.unlink(@instance.package) if File.exist?(@instance.package)
     end
   end

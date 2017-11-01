@@ -120,8 +120,8 @@ module Spofford
         return access_verified? if config[:test]
 
         File.open(filename, 'rb') do |file_stream|
-          req = Net::HTTP::Post.new(url)
           uri = URI(url)
+          req = Net::HTTP::Post.new(url)
           say_verbose("Submitting #{filename} to #{uri} : #{type} as #{config[:spofford_account_name]}")
           req['X-User-Email'] = config[:spofford_account_name]
           req['X-User-Token'] = config[:authentication_token]
@@ -131,6 +131,7 @@ module Spofford
           $stderr.puts(req.inspect) if debug?
           req.body_stream = file_stream
           http = Net::HTTP.new(uri.hostname, uri.port)
+          http.use_ssl = true if uri.scheme == 'https'
           http.set_debug_output($stderr) if debug?
           resp = http.start do
             http.request(req)
