@@ -22,6 +22,15 @@ _Setup is required before first use_.
 
 ### Configuration
 
+What you will need before you start this:
+
+1. The URL of the Spofford instance you will be sending packages to
+   
+   (consult TRLN documentation for the URLs for shared environments)
+   
+1. an _approved_ account on that spofford instance
+1. the password for that account
+
 Command: `config`
 Sample:
 
@@ -31,10 +40,10 @@ This creates (or overwrites) a file named `.spofford-client.yml` in the current 
 
 This is an interactive process, where you will be asked for:
 
- * the base URL to the Spofford instance (default: `http://localhost:3000`, which corresponds to a Rails application running on your machine.) 
- * an output directory (default: `packages` -- a subdirectory in the current directory) -- this is where any `.zip` packages created during `ingest` or `package` operations will be placed.
+ * the base URL to the Spofford instance (default: `http://localhost:3000`, which corresponds to a Rails application running on your machine).  *Consult TRLN Discovery documentation for shared development or production URLs.*
+ * an output directory on your machine or network drive accessible to that machine (default: `packages` -- a subdirectory in the current directory) -- this is where any `.zip` packages created during `ingest` or `package` operations will be placed.
  * an account name (email address); this corresponds to an account that you have already signed up for and had approved by an administrator on the Spofford instance.  The default value represents a guess based on your hostname.
- * You will be offered the opportunity to create an *authentication token* at this point (generally, you will want to do this on first setup).
+ * You will be offered the opportunity to create an *authentication token* at this point (_you probably want to do this_, since tokens are a key part of automating your ingest process).
 
 ## Authentication Tokens
 
