@@ -10,7 +10,7 @@ Gem::Specification.new do |spec|
 
   spec.summary       = 'Client utilities for Spofford, the TRLN record ingest application.'
   #spec.description   = %q{TODO: Write a longer description or delete this line.}
-  spec.homepage      = "TODO: Put your gem's website or public repo URL here."
+  #spec.homepage      = "TODO: Put your gem's website or public repo URL here."
 
   raise 'RubyGems 2.0 or newer is required to protect against public gem pushes.' unless spec.respond_to?(:metadata)
   spec.metadata['allowed_push_host'] = "TODO: Set to 'http://mygemserver.com'"
