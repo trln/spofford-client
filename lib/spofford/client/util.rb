@@ -39,6 +39,8 @@ module Spofford
         ids.flatten.to_json
       end
 
+      # Wrap Thor's logger to make it easier to control
+      # what gets logged
       module ThorLogger
         def shell
           @shell ||= ($stdout.isatty ? Thor::Shell::Color.new : Thor::Shell::Basic.new )
@@ -49,10 +51,16 @@ module Spofford
           false
         end
 
+        def say(msg, color = :yellow)
+          shell.say("[#{self.class.name}] #{msg}", color)
+          nil
+        end
+
         def say_verbose(msg, color = :green)
           shell.say("[#{self.class.name}] #{msg}", color) if verbose?
+          nil
         end
-      end # ThorLogger
-    end #Util
+      end
+    end
   end
 end

@@ -89,14 +89,14 @@ module Spofford
         req = Net::HTTP::Get.new(uri)
         req['X-User-Email'] = @config[:spofford_account_name]
         req['X-User-Token'] = @config[:authentication_token]
-        $stderr.write(req.inspect) if debug?
+        warn(req.inspect) if debug?
 
         resp = Net::HTTP.start(uri.hostname, uri.port) do |http|
           http.request(req)
         end
         if debug?
-          $stderr.write("\n\n -- Response details follow -- \n\n")
-          $stderr.write(resp.inspect)
+          warn("\n\n -- Response details follow -- \n\n")
+          warn(resp.inspect)
         end
         case resp
         when Net::HTTPRedirection, Net::HTTPForbidden, Net::HTTPNotAuthorized
@@ -128,39 +128,63 @@ module Spofford
           req['Content-Type'] = type
           req['Accept'] = 'application/json'
           req['Content-Length'] = File.size(filename).to_s
-          $stderr.puts(req.inspect) if debug?
-          req.body_stream = file_stream
-          http = Net::HTTP.new(uri.hostname, uri.port)
-          http.use_ssl = true if uri.scheme == 'https'
-          http.set_debug_output($stderr) if debug?
-          resp = http.start do
-            http.request(req)
+          say(req.inspect, :green) if debug?
+          req.body_stream = file_stream        
+          request_options = {
+            use_ssl: uri.scheme == 'https',
+            read_timeout: config.fetch(:server_timeout, 120)
+          }
+
+          begin
+            resp = Net::HTTP.start(uri.hostname, uri.port, request_options) do |http|
+              http.set_debug_output($stderr) if debug?
+              http.request(req)
+            end
+          rescue Net::ReadTimeout
+            say("Did not get a reponse back from the server within #{config[:server_timeout]} seconds.", :yellow)
+            say('Your package may still have uploaded successfully.', :yellow)
+            say("You can log in to #{uri.host} interactively to check.", :yellow)
+            return false
+          rescue StandardError => e
+            say("Unexpected error: #{e} -- backtrace", :red)
+            say(e.backtrace.join("\t\n"), :red)
+
+            say("Often this indicates that the server didn't respond in time", :yellow)
+            say('Your upload, however, may still have succeeded', :yellow)
+            say("Please log in to #{uri.host} to check interactively", :yellow)
+            return false
           end
 
           case resp
+          when Net::HTTPRequestTimeOut
+            say("Request timed out; your package may still have uploaded successfully. Please log in to #{uri.host} interactively to check", :red)
+            false
           when Net::HTTPRedirection, Net::HTTPForbidden, Net::HTTPUnauthorized
-            $stderr.puts "#{resp.message} (#{resp.code}) -- authentication failed"
+            say("#{resp.message} (#{resp.code}) -- authentication failed", :red)
+            false
+          when Net::HTTPBadRequest
+            say("Server rejected package #{resp.body}", :red)
             false
           when Net::HTTPSuccess, Net::HTTPCreated
-            say_verbose('Upload accepted')
+            say_verbose('Upload accepted', :green)
             begin
               JSON.parse(resp.body)
             rescue StandardError
-              $stderr.puts('Package submission succeeded, but response was not valid JSON')
-              $stderr.puts("Content type: #{resp['Content-Type']})")
-              $stderr.puts(resp.body)
+              say('Package submission succeeded, but response was not valid JSON', :yellow)
+              say("Content type: #{resp['Content-Type']})", :yellow)
+              say(resp.body, :yellow)
               true
             end
           when Net::HTTPAccepted
             shell.say('Upload accepted, no text response received (this generally means OK)', :yellow)
             true
           else
-            $stderr.puts "#{resp.inspect}"
-            $stderr.puts "Failed request: #{resp.code} : #{resp.message}"
+            say(resp.inspect, :red)
+            say("Failed request: #{resp.code} : #{resp.message}", :red)
             false
           end
         end
-      end # file close
+      end
 
       def faraday_post
         Faraday.post do |req|
