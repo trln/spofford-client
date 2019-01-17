@@ -63,7 +63,8 @@ module Spofford
         spofford_account_name: guess_account,
         package_only: false,
         force_zip: false,
-        verbose: false
+        verbose: false,
+        server_timeout: 120
       }.freeze
 
       def save_config(config, location = default_location)

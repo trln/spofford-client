@@ -8,6 +8,13 @@ module Spofford
       include Thor::Actions
       include Spofford::Client::Config
 
+      map %w[--version -v] => :__version
+
+      desc '--version, -v', 'print the version'
+      def __version
+        puts "Spofford client version #{Spofford::Client::VERSION}, installed #{File.mtime(__FILE__)}"
+      end
+
       desc 'testing', 'Tests some stuff that is not well documented'
       def testing
         say 'this is me in amber', :yellow
@@ -35,6 +42,7 @@ module Spofford
         CONFIG_OPTIONS.each do |key, opt|
           options = ''
           next unless opt[:configure]
+
           current_val = case opt[:type]
                         when :boolean
                           options = '(Y/N)'
@@ -45,6 +53,7 @@ module Spofford
 
           val = ask("#{opt[:description]} [#{current_val}] #{options}")
           next if val.nil? || val.empty? || /^\s*$/.match(val)
+
           result = case opt[:type]
                    when :boolean
                      %w[y true].include?(val.downcase)
@@ -110,6 +119,10 @@ module Spofford
       method_option :account,
                     alias: '-a',
                     desc: 'Override Spofford account name'
+      method_option :manifest,
+                    alias: '-m',
+                    default: '-',
+                    desc: 'Read files to be packaged from manifest; named file or STDIN if no name given'
       method_option :output,
                     desc: 'Override destination for created ingest packages'
       method_option :verbose,
@@ -121,8 +134,19 @@ module Spofford
                     default: false,
                     desc: 'Output HTTP operation details to standard error'
       def ingest(*files)
-        say("Can't call ingest without some files!", :red) && exit(1) if files.empty?
         verbose = options[:verbose]
+        manifest_file = options[:manifest]
+        say("manifest file: #{manifest_file}", :green) if verbose
+        if files.empty? && manifest_file == '-'
+          say("Reading list of files to process from STDIN\n", :green) if verbose
+          files = $stdin.each_line.collect(&:itself).map(&:strip).reject(&:empty?)
+        elsif files.empty?
+          say("reading manifest from #{manifest_file}") if verbose
+          files = File.open(manifest_file) do |f|
+            f.each_line.collect(&:itself).map(&:strip).reject(&:empty?)
+          end
+        end
+        say("Can't call ingest without some files!", :red) && exit(1) if files.empty?
         config = options[:config] ? load_config(options[:config]) : load_config
         raise "Interactive option is not currently supported, sorry!" if options[:interactive]
         %i[interactive verbose debug].each do |k|
@@ -138,12 +162,19 @@ module Spofford
                    say("Skipping packager, submitting JSON file #{files[0]}", :green) if verbose
                    client.send(files[0])
                  else
+                   begin
+                     files = Spofford::Client::Packager.new(files, config).package
+                   rescue Spofford::Client::Packager::NoFilesError => e
+                     say(e, :red)
+                     exit(1)
+                   end
                    client.send(Spofford::Client::Packager.new(files, config).package)
                  end
         if result
           say("package successfully uploaded: #{result}", :green)
         else
-          say("Ingest submission failed, see output", :red)
+
+          say("Ingest submission failed, #{result}", :red)
         end
       end
 
@@ -160,8 +191,13 @@ module Spofford
         end
         config.update(package_options)       
         packager = Spofford::Client::Packager.new(files, config)
-        output = packager.package
-        say("Created #{output}", :green)
+        begin
+          output = packager.package
+          say("Created #{output}", :green)
+        rescue Spofford::Client::Packager::NoFilesError => e
+          say(e, :red)
+          exit 1
+        end
       end
 
       #default_task :ingest
