@@ -16,7 +16,7 @@ module Spofford
       # Guess the Spofford account name based on current user
       # and hostname
       def self.guess_account
-        (ENV['USER'] || ENV['USERNAME']) + "@#{guess_owner}.edu"
+        (ENV['USER'] || ENV['USERNAME'] || 'nobody') + "@#{guess_owner}.edu"
       end
 
       # Get the usual storage location for the configuration
