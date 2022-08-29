@@ -5,6 +5,7 @@ require 'socket'
 require 'logger'
 require 'uri'
 require 'json'
+require 'spofford/client/errors'
 
 module Spofford
   # Module containing classes and method for interacting with a Spofford server.

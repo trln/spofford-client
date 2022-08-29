@@ -61,7 +61,9 @@ module Spofford
       # @return [String] the new token
       def obtain_new_token(user_page_response)
         form = Nokogiri::HTML(user_page_response.body).css('form#new_token')
-        uri = URI.join(user_page_url, form.attribute('action').value)
+        action = form.attribute('action')
+        raise Spofford::Client::AuthenticationError, "Can't access token creation; check password" if action.nil?
+        uri = URI.join(user_page_url, action.value)
         params = collect_params(form)
         logger.debug("Obtaining token from #{uri}")
         resp = post_form(uri, params)
