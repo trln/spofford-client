@@ -1,5 +1,10 @@
 module Spofford
   module Client
-    VERSION = '0.3.0'.freeze
+    def self.version 
+      unless Spofford::Client.const_defined? :VERSION
+        @version ||= File.read(File.join(__dir__, '..', '..', '..', 'VERSION'))
+      end
+    end
+    VERSION = version.freeze
   end
 end
