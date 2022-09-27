@@ -150,7 +150,7 @@ module Spofford
         end
 
         if File.extname(local_package[0]) == '.zip'
-          say('First filename supplied is a zip, using that as ingest package', :green)
+          say_verbose('First filename supplied is a zip, using that as ingest package', :green)
           return local_package[0]
         end
 

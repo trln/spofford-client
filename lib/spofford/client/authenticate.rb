@@ -1,6 +1,6 @@
 require 'io/console'
 require 'nokogiri'
-require 'faraday_middleware'
+require 'faraday/follow_redirects'
 require 'faraday-cookie_jar'
 
 module Spofford
@@ -37,10 +37,11 @@ module Spofford
       def authenticate
         logger.debug("Attempting to authenticate at #{user_page_url}")
         resp = client.get(user_page_url)
+        logger.debug("and here is the response: #{resp} #{resp.class}")
         if resp.status != 200
           logger.warn("Unable to fetch #{user_page_url}")
           logger.warn("Response: #{resp.status} : #{resp.reason_phrase}")
-          logger.info(resp.body)
+          logger.info(resp.body) if resp.respond_to?(:body)
           return false
         end
         # we actually have the response for the login page form now
@@ -49,7 +50,6 @@ module Spofford
         login_form = complete_login_form(form, username, pw)
         resp = do_login(login_form)
         if resp.status != 200
-          logger.info(resp.body)
           raise "Authentication failed: #{resp.status}: #{resp.reason_phrase}"
         end
         resp
@@ -77,7 +77,12 @@ module Spofford
 
       # authenticates and obtains a new access token, in one step.
       def new_token!
-        obtain_new_token(authenticate)
+        auth_result = authenticate
+        if auth_result
+          obtain_new_token(auth_result)
+        else
+          warn("Unable to create new token.  Initial authentication failed, see log messages")
+        end
       end
 
       def complete_login_form(form, user, passwd)
@@ -121,7 +126,7 @@ module Spofford
 
       def create_client
         Faraday.new do |conn|
-          conn.use FaradayMiddleware::FollowRedirects
+          conn.response :follow_redirects
           conn.use :cookie_jar
           conn.adapter Faraday.default_adapter
         end

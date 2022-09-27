@@ -175,6 +175,13 @@ Obtains a new authentication token from Spofford and writes it to the
 configuration file.  This must be used interactively, as you need to log in
 with your account's password in order to generate the new token.
 
+### Status
+
+    $ bundle exec spofford status [transaction ID]
+
+This will fetch the status page for the specified transaction and output 
+the results to standard output.
+
 ## Contributing
 
 Bug reports and pull requests are welcome on GitHub at

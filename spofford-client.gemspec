@@ -24,6 +24,7 @@ Gem::Specification.new do |spec|
 
   spec.add_runtime_dependency 'faraday', '~> 2.0'
   spec.add_runtime_dependency 'faraday-cookie_jar'
+  spec.add_runtime_dependency 'faraday-follow_redirects'
 
   spec.add_runtime_dependency 'mimemagic', '~> 0.4'
   spec.add_runtime_dependency 'nokogiri', '~> 1.8'

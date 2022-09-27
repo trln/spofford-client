@@ -151,6 +151,7 @@ module Spofford
                     desc: 'Be chatty creating packages and sending them to spofford'
       method_option :debug,
                     default: false,
+                    type: :boolean,
                     desc: 'Output HTTP operation details to standard error'
       def ingest(*files)
         verbose = options[:verbose]
@@ -190,9 +191,18 @@ module Spofford
                    client.send(Spofford::Client::Packager.new(files, config).package)
                  end
         if result
-          say("package successfully uploaded: #{result}", :green)
+          say("package successfully uploaded", :green)
+          if result.is_a?(Hash)
+            if %w[id status url files].all? { |x| result.key?(x) }
+              say("Transaction ID: #{result['id']}, status: #{result['status']}")
+              say("URL: #{result['url']}")
+            else
+              say("Upload appeared to succeed but response is unexpected: #{result}", :yellow)
+            end
+          else
+            say("Upload succeeded, but got anomalous response: #{result}", :yellow)
+          end
         else
-
           say("Ingest submission failed, #{result}", :red)
         end
       end
@@ -217,6 +227,23 @@ module Spofford
           say(e, :red)
           exit 1
         end
+      end
+
+      desc 'status <id>', 'Check on the status of a previously submitted transaction given its ID'
+
+      method_option :config, aliases: '-c', type: :string, desc: 'use configuration file'
+      def status(tx_id)
+        config = options[:config] ? load_config(options[:config]) : load_config
+        raise "Interactive option is not currently supported, sorry!" if options[:interactive]
+        %i[interactive verbose debug].each do |k|
+            config[k] = true if options[k]
+          end
+          if options[:account]
+            say("Setting spofford account name to #{options[:account]}", :green) if verbose
+            config[:spofford_account_name] = options[:account]
+          end
+          client = Spofford::Client.create(config)
+          say(client.do_get("/transactions/#{tx_id}.json"))
       end
 
       #default_task :ingest
