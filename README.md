@@ -21,6 +21,19 @@ If you want to install the command globally into your `$PATH`, you can omit the 
 
 But this may require elevated/root privileges.
 
+## Development
+
+A `Dockerfile` is provided to install things into containers rather than into
+your host OS. The container accepts the build argument `RUBY_VERSION` to let
+you specify the version of Ruby you're working with.  The default is `3.1` but
+you can set it at build time with:
+
+    $ docker build . --build-arg RUBY_VERSION=2.7 -t spofford:latest
+
+To run,
+
+    $ docker run -it --rm -v $(pwd):/app -w /app spofford:latest
+
 ## Usage
 
 The commands all have the form  (remember to prepend `bundle exec` if following
