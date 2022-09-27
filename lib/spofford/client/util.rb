@@ -51,6 +51,11 @@ module Spofford
           false
         end
 
+        def report(msg, color = :red)
+          shell.say("#{self.class.name}] #{msg}", color)
+          nil
+        end
+
         def say(msg, color = :yellow)
           shell.say("[#{self.class.name}] #{msg}", color)
           nil

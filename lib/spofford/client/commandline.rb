@@ -50,8 +50,12 @@ module Spofford
                         else
                           config[key]
                         end
-
-          val = ask("#{opt[:description]} [#{current_val}] #{options}")
+          begin
+            val = ask("#{opt[:description]} [#{current_val}] #{options}")
+          rescue Interrupt
+            say("\nConfiguration cancelled", :yellow)
+            exit 0
+          end
           next if val.nil? || val.empty? || /^\s*$/.match(val)
 
           result = case opt[:type]
@@ -62,6 +66,7 @@ module Spofford
                    end
           config[key] = result
         end
+        
         say("Writing your configuration to #{location}", :yellow) if config[:verbose]
         if yes?('Do you want to generate a new access token (Y/N)?')
           new_token = Spofford::Client::Authenticator.new(config).new_token!
@@ -86,14 +91,28 @@ module Spofford
       method_option :config, aliases: '-c', type: :string, desc: 'Configuration file'
       def authenticate
         dest = options[:config] || default_location
-        raise "No existing configuration file at #{dest} : please create one first with 'configure'" unless File.exist?(dest)
+        unless File.size?(dest)
+          say("No existing configuration file at #{dest}", :yellow)
+          if ask("Configure the client? (Y/N)?",default: 'n').downcase == 'y'
+            configure
+          else
+            exit 1
+          end
+        end
         configuration = load_config(dest)
         exit unless ask("This will clear any existing access tokens for #{configuration[:spofford_account_name]}, do you want to proceed (Y/N)?")
         auther = Spofford::Client::Authenticator.new(configuration)
-        new_token = auther.new_token!
-        configuration[:authentication_token] = new_token
-        save_config(configuration, dest)
-        say('New authentication token created and stored.', :green)
+        begin
+          new_token = auther.new_token!
+          configuration[:authentication_token] = new_token
+          save_config(configuration, dest)
+          say('New authentication token created and stored.', :green)
+        rescue Spofford::Client::AuthenticationError => err
+          say("Unable to obtain new token: #{err}", :red)
+          exit 1
+        end
+      rescue Interrupt
+        say("\nAuthentication cancelled.", :yellow)
       end
 
       desc 'ingest', 'Submits file(s) to Spofford'
@@ -132,6 +151,7 @@ module Spofford
                     desc: 'Be chatty creating packages and sending them to spofford'
       method_option :debug,
                     default: false,
+                    type: :boolean,
                     desc: 'Output HTTP operation details to standard error'
       def ingest(*files)
         verbose = options[:verbose]
@@ -171,9 +191,18 @@ module Spofford
                    client.send(Spofford::Client::Packager.new(files, config).package)
                  end
         if result
-          say("package successfully uploaded: #{result}", :green)
+          say("package successfully uploaded", :green)
+          if result.is_a?(Hash)
+            if %w[id status url files].all? { |x| result.key?(x) }
+              say("Transaction ID: #{result['id']}, status: #{result['status']}")
+              say("URL: #{result['url']}")
+            else
+              say("Upload appeared to succeed but response is unexpected: #{result}", :yellow)
+            end
+          else
+            say("Upload succeeded, but got anomalous response: #{result}", :yellow)
+          end
         else
-
           say("Ingest submission failed, #{result}", :red)
         end
       end
@@ -198,6 +227,23 @@ module Spofford
           say(e, :red)
           exit 1
         end
+      end
+
+      desc 'status <id>', 'Check on the status of a previously submitted transaction given its ID'
+
+      method_option :config, aliases: '-c', type: :string, desc: 'use configuration file'
+      def status(tx_id)
+        config = options[:config] ? load_config(options[:config]) : load_config
+        raise "Interactive option is not currently supported, sorry!" if options[:interactive]
+        %i[interactive verbose debug].each do |k|
+            config[k] = true if options[k]
+          end
+          if options[:account]
+            say("Setting spofford account name to #{options[:account]}", :green) if verbose
+            config[:spofford_account_name] = options[:account]
+          end
+          client = Spofford::Client.create(config)
+          say(client.do_get("/transactions/#{tx_id}.json"))
       end
 
       #default_task :ingest

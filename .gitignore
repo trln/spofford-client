@@ -13,7 +13,6 @@ config.yml
 # Created by 'bundle gem'
 /.bundle/
 /.yardoc
-/Gemfile.lock
 /_yardoc/
 /coverage/
 /doc/

@@ -5,29 +5,52 @@ A command line utility for interacting with a Spofford server instance.
 ## Installation
 
 Command line usage, assuming a working Ruby installation:
-    
+
     $ git clone https://github.com/trln/spofford-client
     $ cd spofford-client
-    $ bundle exec rake install 
+    $ bundle config set path vendor/bundle
+    $ bundle install
 
-Which will place the `spofford` script on your PATH (does this work on Windows? You can always install this on a Linux VM, and use directory sharing to process files on the host OS, if use the Linux subsystem if you're on Windows 10).
+This will make the `spofford` executable available via
+
+    $ bundle exec spofford [command] [options] [files]
+
+If you want to install the command globally into your `$PATH`, you can omit the `bundle config` and `bundle install` lines above and run
+
+    $ bundle exec rake install
+
+But this may require elevated/root privileges.
+
+## Development
+
+A `Dockerfile` is provided to install things into containers rather than into
+your host OS. The container accepts the build argument `RUBY_VERSION` to let
+you specify the version of Ruby you're working with.  The default is `3.1` but
+you can set it at build time with:
+
+    $ docker build . --build-arg RUBY_VERSION=2.7 -t spofford:latest
+
+To run,
+
+    $ docker run -it --rm -v $(pwd):/app -w /app spofford:latest
 
 ## Usage
 
-The commands all have the form 
+The commands all have the form  (remember to prepend `bundle exec` if following
+the primary installation recommendation)
 
     $ spofford [command] [options] [file [file2, file3 ...]]
 
-_Setup is required before first use_.  
+_Setup is required before first use_.
 
 ### Configuration
 
 What you will need before you start this:
 
 1. The URL of the Spofford instance you will be sending packages to
-   
+
    (consult TRLN documentation for the URLs for shared environments)
-   
+
 1. an _approved_ account on that spofford instance
 1. the password for that account
 
@@ -36,7 +59,7 @@ Sample:
 
      $ spofford config
 
-This creates (or overwrites) a file named `.spofford-client.yml` in the current working directory, based on your responses to questions. 
+This creates (or overwrites) a file named `.spofford-client.yml` in the current working directory, based on your responses to questions.
 
 This is an interactive process, where you will be asked for:
 
@@ -47,10 +70,19 @@ This is an interactive process, where you will be asked for:
 
 ## Authentication Tokens
 
-To make it simple to submit ingest packages via automated tasks (e.g. `cron`), Spofford supports the use of *authentication tokens*; these are auto-generated passphrases that are stored within the configuration, and are used by the `ingest` command to authenticate.  This saves you from having to
-store your account password on disk, instead using a renewable authentication token which is only valid for a limited range of operations. Should your authentication token become compromised, you can generate a new one.
+To make it simple to submit ingest packages via automated tasks (e.g. `cron`),
+Spofford supports the use of *authentication tokens*; these are auto-generated
+passphrases that are stored within the configuration, and are used by the
+`ingest` command to authenticate.  This saves you from having to store your
+account password on disk, instead using a renewable authentication token which
+is only valid for a limited range of operations. Should your authentication
+token become compromised, you can generate a new one.
 
-Note that each account may only have one authentication token associated with it, and there is no way for a user to query for the current token.  You can generate a new one (using the `authenticate` command), but *this sets a new token for your account*; so any other configurations you have linked to the account will have to be updated.
+Note that each account may only have one authentication token associated with
+it, and there is no way for a user to query for the current token.  You can
+generate a new one (using the `authenticate` command), but *this sets a new
+token for your account*; so any other configurations you have linked to the
+account will have to be updated.
 
 ## Commands
 
@@ -58,7 +90,8 @@ This section documents intent; if in doubt,
 
     $ spofford help commands
 
-may contain different information; if so, that output should be considered definitive!
+may contain different information; if so, that output should be considered
+definitive!
 
 ### `ingest`
 
@@ -70,7 +103,10 @@ The ingest command has the form
 * if multiple filenames are specified, or the first one does not have a `.zip` extension, then they will be assumed to specify the constituents of an ingest package.
 * the `--json` option tells the client that only the first file matters, and it will be interpreted as an Argot JSON file with added/updated documents.
 
-When used in the second form, the command will, in the default configuration, create a timestamped `zip` file in the configuration's `:output` directory.  Since we are not (currently) using manifests, the interpretation of each file depends on its filename (and extension).
+When used in the second form, the command will, in the default configuration,
+create a timestamped `zip` file in the configuration's `:output` directory.
+Since we are not (currently) using manifests, the interpretation of each file
+depends on its filename (and extension).
 
 See the `package` command for the details.
 
@@ -138,24 +174,28 @@ add-argot-7.json # add/update file
 delete.json # JSON array of the lines in /ils/updates/delete
 ```
 
-
 ### A Note on Validation
 
-The packager is doing quite a few things, and may in the future add more quality checks, but for now it will let you do all sorts of things you may not actually want to do.  
+The packager is doing quite a few things, and may in the future add more
+quality checks, but for now it will let you do all sorts of things you may not
+actually want to do.
 
 You probably want to validate your Argot before you try to ingest or package it, using the tools provided by the `argot` gem.
 
 ### `authenticate`
 
-Obtains a new authentication token from Spofford and writes it to the configuration file.  This must be used interactively, as you need to log in
+Obtains a new authentication token from Spofford and writes it to the
+configuration file.  This must be used interactively, as you need to log in
 with your account's password in order to generate the new token.
-   
-## Development
 
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+### Status
 
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and tags, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+    $ bundle exec spofford status [transaction ID]
+
+This will fetch the status page for the specified transaction and output 
+the results to standard output.
 
 ## Contributing
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/trln/spofford-client.
+Bug reports and pull requests are welcome on GitHub at
+https://github.com/trln/spofford-client.

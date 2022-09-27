@@ -5,6 +5,7 @@ require 'socket'
 require 'logger'
 require 'uri'
 require 'json'
+require 'spofford/client/errors'
 
 module Spofford
   # Module containing classes and method for interacting with a Spofford server.
@@ -14,6 +15,7 @@ module Spofford
     autoload :Packager, 'spofford/client/packager'
     autoload :Authenticator, 'spofford/client/authenticate'
     autoload :CommandLine, 'spofford/client/commandline'
+    autoload :Status, 'spofford/client/status'
     autoload :Util, 'spofford/client/util'
 
     def detect_content_type(filename)
@@ -36,6 +38,7 @@ module Spofford
     # Client class that tried to be unsurprising
     class DefaultClient
       include Spofford::Client
+      include Spofford::Client::Status
       include Spofford::Client::Config
       include Spofford::Client::Util
       include Spofford::Client::Util::ThorLogger
@@ -110,6 +113,28 @@ module Spofford
         end
       end
 
+      def add_headers(req, content_type = nil)
+        req['X-User-Email'] = config[:spofford_account_name]
+        req['X-User-Token'] = config[:authentication_token]
+        warn("Request method: #{req.method}")
+        req['Content-Type'] = content_type if req.method == 'POST'
+        req['Accept'] = 'application/json'
+      end
+
+      def request_options(uri)
+          {
+            use_ssl: uri.scheme == 'https',
+            read_timeout: config.fetch(:server_timeout, 120)
+          }
+      end
+
+      def do_get(path)
+        uri = URI(@config[:base_url] + path)
+        return faraday_get(uri.to_s).body
+      end
+
+      # low-level NET::HTTP to allow us to stream large uploads
+      # without having to load everything into memory
       def send(filename)
         bail("File #{filename} not found") unless File.exist?(filename)
         url = @config[:ingest_url] || "#{@config[:base_url]}/ingest/#{@config[:owner]}"
@@ -185,6 +210,15 @@ module Spofford
           end
         end
       end
+
+      def faraday_get(url)
+        return Faraday.get(url, {}, {
+          'X-User-Email' => config[:spofford_account_name],
+          'X-User-Token' => config[:authentication_token],
+          'Accept' => 'application/json'
+        })
+      end
+
 
       def faraday_post
         Faraday.post do |req|

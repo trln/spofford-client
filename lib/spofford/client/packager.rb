@@ -150,7 +150,7 @@ module Spofford
         end
 
         if File.extname(local_package[0]) == '.zip'
-          say('First filename supplied is a zip, using that as ingest package', :green)
+          say_verbose('First filename supplied is a zip, using that as ingest package', :green)
           return local_package[0]
         end
 
@@ -165,8 +165,8 @@ module Spofford
           abs_dir = File.dirname(File.absolute_path(@zipfile))
           FileUtils.mkdir_p(abs_dir) unless File.directory?(abs_dir)
           Zip::File.open(@zipfile, Zip::File::CREATE) do |zipfile|
+            say_verbose("Adding #{JSON.pretty_generate(mapped_filenames)}")
             mapped_filenames.each do |filenames|
-              say("Here is the filenames thingy: #{filenames}")
               say_verbose("Adding #{filenames[:source]} to zip file as #{filenames[:zipname]}", :green)
               zipfile.add(filenames[:zipname], filenames[:source])
             end
