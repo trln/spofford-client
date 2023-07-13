@@ -27,20 +27,21 @@ module Spofford
         # what it will be called in the zip file
         result = filename
         data = file_data(filename)
-        source, result = tempstore_data(filename, data) unless data.nil?
-        say_verbose("#{filename} => source: #{source}, zipname: #{result}", :cyan)
+        source, result, is_temp = tempstore_data(filename, data) unless data.nil?
+        say_verbose("#{filename} => source: #{source}, zipname: #{result}, cleanup: #{is_temp}", :cyan)
         # note source will be nil when we didn't have to monkey with the filename
-        { source: source, zipname: File.basename(result) }
+        { source: source, zipname: File.basename(result), cleanup: is_temp }
       end
 
       def tempstore_data(filename, data)
         say_verbose("Creating temp JSON array file from #{filename}", :cyan)
         prefix = File.basename(filename, File.extname(filename))
         result = "#{prefix}.json"
-        source = Tempfile.new(['delete-', '.json'])
+        # nb. Tempfile.create will not auto-delete the file
+        source = Tempfile.create(['delete-', '.json'])
         source.write(data)
         source.close
-        [source.path, result]
+        [source.path, result, true]
       end
 
       def file_data(filename)
@@ -86,7 +87,7 @@ module Spofford
 
       DEFAULT_ZIP_NAME = 'spofford-ingest.zip'.freeze
 
-      attr_accessor(:files, :output, :zipfile)
+      attr_accessor(:files, :output, :zipfile, :mapped_filenames)
 
       def initialize(filenames = [], options = {})
         @dry_run = options.fetch(:test, false)
@@ -171,6 +172,13 @@ module Spofford
               zipfile.add(filenames[:zipname], filenames[:source])
             end
           end
+        end
+        # previously, some files were created with Tempfile.new which
+        # meant they were cleaned up when the object references were GCd
+        # now that we use Tempfile.create we need to clean them up 
+        # manually
+        mapped_filenames.select { |m| m.fetch(:cleanup, false) }.each do |m|
+            File.unlink(m[:source])
         end
         @zipfile
       end
